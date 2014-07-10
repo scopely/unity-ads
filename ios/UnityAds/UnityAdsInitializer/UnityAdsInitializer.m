@@ -57,7 +57,6 @@
 
 - (void)dealloc {
   [UnityAdsDevice clearReachabilityCheck];
-  dispatch_release(self.queue);
 }
 
 - (BOOL)initWasSuccessfull {

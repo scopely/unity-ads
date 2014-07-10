@@ -139,27 +139,14 @@ int main(int argc, char *argv[]);
 #endif
 }
 
-+ (NSString *)advertisingIdentifier {
-  NSString *identifier = nil;
-
-  Class advertisingManagerClass = NSClassFromString(@"ASIdentifierManager");
-
-  if (advertisingManagerClass != nil) {
-    identifier = [[[advertisingManagerClass sharedManager] advertisingIdentifier] UUIDString];
-  }
-
-  return identifier;
++ (NSString *)advertisingIdentifier
+{
+    return [[[ASIdentifierManager sharedManager] advertisingIdentifier] UUIDString];
 }
 
-+ (BOOL)canUseTracking {
-  Class advertisingManagerClass = NSClassFromString(@"ASIdentifierManager");
-  BOOL enabled = YES;
-
-  if (advertisingManagerClass != nil) {
-    enabled = [[advertisingManagerClass sharedManager] isAdvertisingTrackingEnabled];
-  }
-
-  return enabled;
++ (BOOL)canUseTracking
+{
+    return [ASIdentifierManager sharedManager].isAdvertisingTrackingEnabled;
 }
 
 + (NSString *)macAddress {

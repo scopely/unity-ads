@@ -338,7 +338,7 @@
     self.skipLabel.backgroundColor = [UIColor clearColor];
     self.skipLabel.titleLabel.textColor = [UIColor whiteColor];
     self.skipLabel.titleLabel.font = [UIFont systemFontOfSize:12.0];
-    self.skipLabel.titleLabel.textAlignment = UITextAlignmentLeft;
+    self.skipLabel.titleLabel.textAlignment = NSTextAlignmentLeft;
     [self.skipLabel setTitleShadowColor:[UIColor blackColor] forState:UIControlStateNormal];
     [self.skipLabel setContentHorizontalAlignment:UIControlContentHorizontalAlignmentLeft];
     self.skipLabel.titleLabel.shadowColor = [UIColor blackColor];
@@ -425,7 +425,7 @@
     self.bufferingLabel.backgroundColor = [UIColor clearColor];
     self.bufferingLabel.textColor = [UIColor whiteColor];
     self.bufferingLabel.font = [UIFont systemFontOfSize:12.0];
-    self.bufferingLabel.textAlignment = UITextAlignmentRight;
+    self.bufferingLabel.textAlignment = NSTextAlignmentRight;
     self.bufferingLabel.shadowColor = [UIColor blackColor];
     self.bufferingLabel.shadowOffset = CGSizeMake(0, 1.0);
     self.bufferingLabel.text = @"Buffering...";
@@ -456,7 +456,7 @@
     self.progressLabel.backgroundColor = [UIColor clearColor];
     self.progressLabel.textColor = [UIColor whiteColor];
     self.progressLabel.font = [UIFont systemFontOfSize:12.0];
-    self.progressLabel.textAlignment = UITextAlignmentRight;
+    self.progressLabel.textAlignment = NSTextAlignmentRight;
     self.progressLabel.shadowColor = [UIColor blackColor];
     self.progressLabel.shadowOffset = CGSizeMake(0, 1.0);
     
