@@ -13,7 +13,7 @@ public class UnityAdsConstants {
 	 */
 
 	/* Unity Ads */
-	public static final String UNITY_ADS_VERSION = "1302";
+	public static final String UNITY_ADS_VERSION = "1308";
 	public static final String UNITY_ADS_REQUEST_METHOD_POST = "POST";
 	public static final String UNITY_ADS_REQUEST_METHOD_GET = "GET";
 
@@ -54,6 +54,7 @@ public class UnityAdsConstants {
 	public static final String UNITY_ADS_WEBVIEW_API_ACTION_KEY = "action";
 	public static final String UNITY_ADS_WEBVIEW_API_PLAYVIDEO = "playVideo";
 	public static final String UNITY_ADS_WEBVIEW_API_NAVIGATETO = "navigateTo";
+	public static final String UNITY_ADS_WEBVIEW_API_LOADCOMPLETE = "loadComplete";
 	public static final String UNITY_ADS_WEBVIEW_API_INITCOMPLETE = "initComplete";
 	public static final String UNITY_ADS_WEBVIEW_API_CLOSE = "close";
 	public static final String UNITY_ADS_WEBVIEW_API_OPEN = "open";

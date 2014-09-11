@@ -16,19 +16,22 @@
 - (id)initWithData:(NSDictionary *)data
 {
     self = [super init];
-    if (self)
-    {
+    if (self) {
         id keyValue = data[kUnityAdsRewardItemKeyKey];
         _key = [keyValue isKindOfClass:[NSNumber class]] ? [keyValue stringValue] : keyValue;
+        if(_key == nil || [_key length] == 0) {
+            return nil;
+        }
         
         id nameValue = data[kUnityAdsRewardNameKey];
         _name = [nameValue isKindOfClass:[NSNumber class]] ? [nameValue stringValue] : nameValue;
+        if(_name == nil || [_name length] == 0) {
+            return nil;
+        }
         
         NSString *pictureURLString = data[kUnityAdsRewardPictureKey];
         _pictureURL = [NSURL URLWithString:pictureURLString];
-        
-        if(_key == nil || _name == nil || _pictureURL == nil)
-        {
+        if(_pictureURL == nil) {
             return nil;
         }
     }

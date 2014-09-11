@@ -30,7 +30,11 @@ public class UnityAdsZoneManager {
 				}
 				
 				if(zone.isDefault()) {
-					_defaultZone = new UnityAdsZone(jsonZone);
+					if(zone.isIncentivized()) {
+						_defaultZone = new UnityAdsIncentivizedZone(jsonZone);
+					} else {
+						_defaultZone = new UnityAdsZone(jsonZone);
+					}
 				}
 				
 				if(_currentZone == null && zone.isDefault()) {
@@ -60,9 +64,9 @@ public class UnityAdsZoneManager {
 			_currentZone = _zones.get(zoneId);
 			return true;
 		} else {
-			_currentZone = _defaultZone;
+			_currentZone = null;
+			return false;
 		}
-		return false;
 	}
 	
 	public int zoneCount() {

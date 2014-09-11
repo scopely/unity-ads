@@ -1,10 +1,14 @@
 package com.unity3d.ads.android.view;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.media.MediaPlayer;
@@ -18,6 +22,7 @@ import android.widget.RelativeLayout;
 
 import com.unity3d.ads.android.UnityAds;
 import com.unity3d.ads.android.UnityAdsDeviceLog;
+import com.unity3d.ads.android.campaign.UnityAdsCampaign;
 import com.unity3d.ads.android.campaign.UnityAdsCampaign.UnityAdsCampaignStatus;
 import com.unity3d.ads.android.properties.UnityAdsConstants;
 import com.unity3d.ads.android.properties.UnityAdsProperties;
@@ -32,6 +37,7 @@ import com.unity3d.ads.android.webapp.UnityAdsWebView;
 import com.unity3d.ads.android.webapp.IUnityAdsWebViewListener;
 import com.unity3d.ads.android.zone.UnityAdsZone;
 
+@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebViewListener, 
 																IUnityAdsVideoPlayerListener {
 
@@ -92,7 +98,14 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 			UnityAdsDeviceLog.error("Cannot open, wrong activity");
 		}
 	}
-	
+
+	public void fixActivityAttachment() {
+		if (this.getParent() != null && (ViewGroup)this.getParent() != null)
+			((ViewGroup)this.getParent()).removeView(this);
+
+		UnityAdsProperties.getCurrentActivity().addContentView(this, new FrameLayout.LayoutParams(FILL_PARENT, FILL_PARENT));
+	}
+
 	public void closeAds (JSONObject data) {		
 		if (this.getParent() != null) {
 			ViewGroup vg = (ViewGroup)this.getParent();
@@ -105,7 +118,7 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 		webview.destroy();
 		webview = null;
 	}
-	
+
 	public void setViewState (UnityAdsMainViewState state) {
 		if (!_currentState.equals(state)) {
 			_currentState = state;
@@ -137,8 +150,12 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 		}
 		
 		destroyVideoPlayerView();
-		setViewState(UnityAdsMainViewState.WebView);		
-		UnityAdsProperties.getCurrentActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+		setViewState(UnityAdsMainViewState.WebView);
+
+		Activity currentActivity = UnityAdsProperties.getCurrentActivity();
+		if(currentActivity != null) {
+			currentActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+		}
 	}
 	
 	@Override
@@ -267,12 +284,18 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 			// UNSPECIFIED
 			targetOrientation = -1;
 		}
-		
-		UnityAdsProperties.getCurrentActivity().setRequestedOrientation(targetOrientation);
-		
+
+		Activity currentActivity = UnityAdsProperties.getCurrentActivity();
+		if(currentActivity != null) {
+			currentActivity.setRequestedOrientation(targetOrientation);
+		}
+
 		focusToView(videoplayerview);
-		webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_HIDESPINNER, spinnerParams);
-		webview.setWebViewCurrentView(UnityAdsConstants.UNITY_ADS_WEBVIEW_VIEWTYPE_COMPLETED, params);
+
+		if(webview != null) {
+			webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_HIDESPINNER, spinnerParams);
+			webview.setWebViewCurrentView(UnityAdsConstants.UNITY_ADS_WEBVIEW_VIEWTYPE_COMPLETED, params);
+		}
 	}
 	
 	@Override
@@ -318,13 +341,15 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 		catch (Exception e) {
 			UnityAdsDeviceLog.error("Could not create JSON");
 		}
-		
-		webview.setWebViewCurrentView(UnityAdsConstants.UNITY_ADS_WEBVIEW_VIEWTYPE_COMPLETED, params);
-		
-		webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_SHOWERROR, errorParams);
-		webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_VIDEOCOMPLETED, params);
-		webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_HIDESPINNER, spinnerParams);
-		
+
+		if(webview != null) {
+			webview.setWebViewCurrentView(UnityAdsConstants.UNITY_ADS_WEBVIEW_VIEWTYPE_COMPLETED, params);
+
+			webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_SHOWERROR, errorParams);
+			webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_VIDEOCOMPLETED, params);
+			webview.sendNativeEventToWebApp(UnityAdsConstants.UNITY_ADS_NATIVEEVENT_HIDESPINNER, spinnerParams);
+		}
+
 		if(UnityAdsProperties.SELECTED_CAMPAIGN != null) {
 			UnityAdsProperties.SELECTED_CAMPAIGN.setCampaignStatus(UnityAdsCampaignStatus.VIEWED);
 			UnityAdsProperties.SELECTED_CAMPAIGN = null;
@@ -365,11 +390,16 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 
 		if (videoplayerview != null) {
 			videoplayerview.setKeepScreenOn(false);
+			videoplayerview.hideVideo();
 			videoplayerview = null;
 		}
 
 		setViewState(UnityAdsMainViewState.WebView);
-		UnityAdsProperties.getCurrentActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+		
+		Activity currentActivity = UnityAdsProperties.getCurrentActivity();
+		if(currentActivity != null) {
+			currentActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+		}
 
 		JSONObject params = new JSONObject();
 		try {
@@ -386,6 +416,22 @@ public class UnityAdsMainView extends RelativeLayout implements IUnityAdsWebView
 	// IUnityAdsWebViewListener
 	@Override
 	public void onWebAppLoaded () {
-		webview.initWebApp(UnityAds.webdata.getData());
+		try {
+			ArrayList<UnityAdsCampaign> viewableCampaigns = UnityAds.webdata.getViewableVideoPlanCampaigns();
+			JSONObject initData = UnityAds.webdata.getData();
+			JSONArray campaignArray = initData.getJSONObject("data").getJSONArray("campaigns");
+			JSONArray viewableCampaignArray = new JSONArray();
+			for(int i = 0; i < campaignArray.length(); ++i) {
+				JSONObject campaign = campaignArray.getJSONObject(i);
+				String campaignId = campaign.getString("id");
+				for(UnityAdsCampaign viewableCampaign : viewableCampaigns) {
+					if(viewableCampaign.getCampaignId() == campaignId) {
+						viewableCampaignArray.put(campaign);
+					}
+				}
+			}
+			initData.getJSONObject("data").put("campaigns", viewableCampaignArray);
+			webview.initWebApp(initData);
+		} catch(Exception e) {}
 	}
 }
