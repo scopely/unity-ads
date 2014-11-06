@@ -490,7 +490,7 @@
     self.stagingLabel.backgroundColor = [UIColor blackColor];
     self.stagingLabel.textColor = [UIColor redColor];
     self.stagingLabel.font = [UIFont systemFontOfSize:16];
-    self.stagingLabel.textAlignment = UITextAlignmentCenter;
+    self.stagingLabel.textAlignment = NSTextAlignmentCenter;
     self.stagingLabel.numberOfLines = 2;
     self.stagingLabel.text = @"INTERNAL UNITY TEST BUILD\nDO NOT USE IN PRODUCTION";
     self.stagingLabel.hidden = YES;
