@@ -11,23 +11,28 @@
 #import "UnityAdsVideoViewController.h"
 #import "UnityAdsVideoPlayer.h"
 #import "UnityAdsVideoView.h"
-#import "../UnityAdsProperties/UnityAdsProperties.h"
+#import "UnityAdsProperties.h"
 #import "UnityAdsVideoMuteButton.h"
-#import "../UnityAdsBundle/UnityAdsBundle.h"
-#import "../UnityAdsView/UnityAdsMainViewController.h"
-#import "../UnityAdsZone/UnityAdsZoneManager.h"
+#import "UnityAdsBundle.h"
+#import "UnityAdsMainViewController.h"
+#import "UnityAdsZoneManager.h"
 
-@interface UnityAdsVideoViewController ()
-  @property (nonatomic, strong) UnityAdsVideoView *videoView;
-  @property (nonatomic, strong) UnityAdsVideoPlayer *videoPlayer;
-  @property (nonatomic, weak) UnityAdsCampaign *campaignToPlay;
-  @property (nonatomic, strong) UILabel *bufferingLabel;
-  @property (nonatomic, strong) UILabel *progressLabel;
-  @property (nonatomic, strong) UIButton *skipLabel;
-  @property (nonatomic, strong) UIView *videoOverlayView;
-  @property (nonatomic, strong) NSURL *currentPlayingVideoUrl;
-  @property (nonatomic, strong) UnityAdsVideoMuteButton *muteButton;
-  @property (nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
+@interface UnityAdsVideoViewController () {
+@protected
+  BOOL _routeChanged;
+}
+@property (nonatomic, strong) UnityAdsVideoView *videoView;
+@property (nonatomic, strong) UnityAdsVideoPlayer *videoPlayer;
+@property (nonatomic, weak) UnityAdsCampaign *campaignToPlay;
+@property (nonatomic, strong) UILabel *bufferingLabel;
+@property (nonatomic, strong) UILabel *progressLabel;
+@property (nonatomic, strong) UIButton *skipLabel;
+@property (nonatomic, strong) UIView *videoOverlayView;
+@property (nonatomic, strong) NSURL *currentPlayingVideoUrl;
+@property (nonatomic, strong) UnityAdsVideoMuteButton *muteButton;
+@property (nonatomic, strong) UITapGestureRecognizer *tapGestureRecognizer;
+@property (nonatomic, strong) UILabel *stagingLabel;
+
 
 @end
 
@@ -37,17 +42,35 @@
 @synthesize isMuted = _isMuted;
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-    if (self) {
-      self.tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapFrom:)];
-      self.isPlaying = NO;
-      self.isMuted = NO;
-    }
-    return self;
+  self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+  if (self) {
+    self.tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapFrom:)];
+    self.isPlaying = NO;
+    self.isMuted = NO;
+    _routeChanged = false;
+  }
+  return self;
+}
+
+- (void)dealloc {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+
+-(void)routeChanged:(id)object {
+  _routeChanged = true;
 }
 
 - (void)viewDidLoad {
   [super viewDidLoad];
+  
+  
+  NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+  [nc addObserver:self
+         selector:@selector(routeChanged:)
+             name:AVAudioSessionRouteChangeNotification
+           object:[AVAudioSession sharedInstance]];
+  
   [self.view setBackgroundColor:[UIColor blackColor]];
   self.view.clipsToBounds = true;
   
@@ -65,7 +88,7 @@
 - (void) handleTapFrom: (UITapGestureRecognizer *)recognizer
 {
   // TODO: Show controlls
-    [self showOverlay];
+  [self showOverlay];
   UALOG_DEBUG(@"SHOW CONTROLLS");
 }
 
@@ -78,6 +101,9 @@
   [self destroyProgressLabel];
   [self destroyBufferingLabel];
   [self destroyVideoSkipLabel];
+  if([[UnityAdsProperties sharedInstance] unityDeveloperInternalTestMode] == TRUE) {
+    [self destroyStagingLabel];
+  }
   [self destroyVideoOverlayView];
   
   [super viewDidDisappear:animated];
@@ -92,6 +118,9 @@
   [self createBufferingLabel];
   [self createVideoSkipLabel];
   [self createMuteButton];
+  if([[UnityAdsProperties sharedInstance] unityDeveloperInternalTestMode] == TRUE) {
+    [self createStagingLabel];
+  }
   
   [self.view bringSubviewToFront:self.videoOverlayView];
 }
@@ -112,15 +141,15 @@
   UALOG_DEBUG("Mutebutton frame: %f x %f - %f x %f",self.muteButton.frame.size.height,self.muteButton.frame.size.width,self.muteButton.frame.origin.x,self.muteButton.frame.origin.y);
   
   // Position in lower left corner.
-
+  
   if (self.videoView != nil) {
     [self.videoView setFrame:self.view.bounds];
   }
-
+  
 }
 
 - (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
+  [super didReceiveMemoryWarning];
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
@@ -153,10 +182,10 @@
   UALOG_DEBUG(@"");
   NSURL *videoURL = [[UnityAdsCampaignManager sharedInstance] getVideoURLForCampaign:campaignToPlay];
   
-	if (videoURL == nil) {
-		UALOG_DEBUG(@"Video not found!");
-		return;
-	}
+  if (videoURL == nil) {
+    UALOG_DEBUG(@"Video not found!");
+    return;
+  }
   
   self.campaignToPlay = campaignToPlay;
   self.currentPlayingVideoUrl = videoURL;
@@ -190,7 +219,7 @@
   [self _createVideoPlayer];
   [self _attachVideoPlayer];
   [self.videoPlayer preparePlayer];
-
+  
   dispatch_async(dispatch_get_main_queue(), ^{
     [self.videoPlayer replaceCurrentItemWithPlayerItem:item];
     [self.videoPlayer playSelectedVideo];
@@ -297,11 +326,18 @@
   if ([currentZone allowVideoSkipInSeconds] == 0) {
     self.skipLabel.hidden = YES;
   }
+  self.stagingLabel.hidden = NO;
   [self hideOverlayAfter:3.0f];
 }
 
 - (void)videoPlaybackStalled {
   UALOG_DEBUG(@"");
+  if (_routeChanged) {
+    [self.videoPlayer play];
+    if (!self.isMuted)
+    [self muteVideoButtonPressed:nil];
+    _routeChanged = false;
+  }
   self.bufferingLabel.hidden = NO;
   [self showVideoSkipLabel];
   [self showOverlay];
@@ -445,11 +481,39 @@
   }
 }
 
+#pragma mark - Staging label
+
+- (void)createStagingLabel {
+  if(self.stagingLabel == nil && self.videoOverlayView != nil) {
+    self.stagingLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, self.view.bounds.size.height)];
+    self.stagingLabel.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
+    self.stagingLabel.backgroundColor = [UIColor blackColor];
+    self.stagingLabel.textColor = [UIColor redColor];
+    self.stagingLabel.font = [UIFont systemFontOfSize:16];
+    self.stagingLabel.textAlignment = UITextAlignmentCenter;
+    self.stagingLabel.numberOfLines = 2;
+    self.stagingLabel.text = @"INTERNAL UNITY TEST BUILD\nDO NOT USE IN PRODUCTION";
+    self.stagingLabel.hidden = YES;
+    [self.stagingLabel sizeToFit];
+    [self.videoOverlayView addSubview:self.stagingLabel];
+    [self.videoOverlayView bringSubviewToFront:self.stagingLabel];
+    self.stagingLabel.center = self.view.center;
+    self.videoOverlayView.hidden = NO;
+  }
+}
+
+- (void)destroyStagingLabel {
+  if(self.stagingLabel != nil) {
+    [self.stagingLabel removeFromSuperview];
+    self.stagingLabel = nil;
+  }
+}
+
 #pragma mark - Video Progress Label
 
 - (void)createProgressLabel {
   UALOG_DEBUG(@"");
-
+  
   if (self.progressLabel == nil && self.videoOverlayView != nil) {
     self.progressLabel = [[UILabel alloc] initWithFrame:CGRectMake(self.view.bounds.size.width - 303, self.view.bounds.size.height - 23, 300, 20)];
     self.progressLabel.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
@@ -462,7 +526,7 @@
     
     [self.videoOverlayView addSubview:self.progressLabel];
     [self.videoOverlayView bringSubviewToFront:self.progressLabel];
-
+    
     self.videoOverlayView.hidden = NO;
   }
 }
@@ -475,8 +539,8 @@
 }
 
 - (void)updateLabelsWithCMTime:(CMTime)currentTime {
-	Float64 duration = [self _currentVideoDuration];
-	Float64 current = CMTimeGetSeconds(currentTime);
+  Float64 duration = [self _currentVideoDuration];
+  Float64 current = CMTimeGetSeconds(currentTime);
   Float64 timeLeft = duration - current;
   Float64 timeUntilSkip = -1;
   
@@ -504,25 +568,26 @@
     
     if (self.skipLabel != nil) {
       [self.skipLabel setTitle:skipText forState:UIControlStateNormal];
+      [self.skipLabel setTitle:skipText forState:UIControlStateDisabled];
     }
   } else {
     [self hideOverlayAfter:3.0f];
   }
   
-	NSString *descriptionText = [NSString stringWithFormat:NSLocalizedString(@"This video ends in %.0f seconds.", nil), timeLeft];
-	self.progressLabel.text = descriptionText;
+  NSString *descriptionText = [NSString stringWithFormat:NSLocalizedString(@"This video ends in %.0f seconds.", nil), timeLeft];
+  self.progressLabel.text = descriptionText;
 }
 
 - (Float64)_currentVideoDuration {
   CMTime durationTime = self.videoPlayer.currentItem.asset.duration;
-	Float64 duration = CMTimeGetSeconds(durationTime);
-	
-	return duration;
+  Float64 duration = CMTimeGetSeconds(durationTime);
+  
+  return duration;
 }
 
 - (NSValue *)_valueWithDuration:(Float64)duration {
   CMTime time = CMTimeMakeWithSeconds(duration, NSEC_PER_SEC);
-	return [NSValue valueWithCMTime:time];
+  return [NSValue valueWithCMTime:time];
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {

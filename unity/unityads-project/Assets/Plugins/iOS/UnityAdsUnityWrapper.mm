@@ -192,6 +192,14 @@ extern "C" {
     const char *getRewardItemDetailsKeys () {
         return UnityAdsMakeStringCopy([[NSString stringWithFormat:@"%@;%@", kUnityAdsRewardItemNameKey, kUnityAdsRewardItemPictureKey] UTF8String]);
     }
+
+    void setDebugMode(bool debugMode) {
+        [[UnityAds sharedInstance] setDebugMode:debugMode];
+    }
+
+    void enableUnityDeveloperInternalTestMode () {
+        [[UnityAds sharedInstance] enableUnityDeveloperInternalTestMode];
+    }
 }
 
 @end

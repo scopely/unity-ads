@@ -24,7 +24,6 @@ public class UnityAdsProperties {
 	public static WeakReference<Activity> BASE_ACTIVITY = null;
 	public static WeakReference<Activity> CURRENT_ACTIVITY = null;
 	public static UnityAdsCampaign SELECTED_CAMPAIGN = null;
-	public static Boolean UNITY_ADS_DEBUG_MODE = false;
 	public static int CAMPAIGN_REFRESH_VIEWS_COUNT = 0;
 	public static int CAMPAIGN_REFRESH_VIEWS_MAX = 0;
 	public static int CAMPAIGN_REFRESH_SECONDS = 0;
@@ -33,6 +32,7 @@ public class UnityAdsProperties {
 	public static String TEST_URL = null;
 	public static String TEST_JAVASCRIPT = null;
 	public static Boolean RUN_WEBVIEW_TESTS = false;
+	public static Boolean UNITY_DEVELOPER_INTERNAL_TEST = false;
 	
 	public static String TEST_DEVELOPER_ID = null;
 	public static String TEST_OPTIONS_ID = null;

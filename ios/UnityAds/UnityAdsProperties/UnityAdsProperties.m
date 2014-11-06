@@ -11,7 +11,7 @@
 #import "../UnityAds.h"
 #import "../UnityAdsDevice/UnityAdsDevice.h"
 
-NSString * const kUnityAdsVersion = @"1308";
+NSString * const kUnityAdsVersion = @"1309";
 
 @implementation UnityAdsProperties
 
@@ -88,5 +88,12 @@ static UnityAdsProperties *sharedProperties = nil;
 - (void)refreshCampaignQueryString {
   [self setCampaignQueryString:[self _createCampaignQueryString]];
 }
+
+- (void)enableUnityDeveloperInternalTestMode {
+  [self setCampaignDataUrl:@"https://impact.staging.applifier.com/mobile/campaigns"];
+  [self setCampaignQueryString:[self _createCampaignQueryString]];
+  [self setUnityDeveloperInternalTestMode:true];
+}
+
 
 @end
