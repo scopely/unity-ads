@@ -84,8 +84,12 @@
 - (void)_queueWithURLString:(NSString *)urlString queryString:(NSString *)queryString httpMethod:(NSString *)httpMethod retries:(NSNumber *)retryCount {
 	NSURL *url = [NSURL URLWithString:urlString];
 	NSData *body = nil;
-	if (queryString != nil)
-		body = [queryString dataUsingEncoding:NSUTF8StringEncoding];
+  if (queryString != nil) {
+    NSString * queryStringWithIFV = [queryString stringByAppendingFormat:@"&%@=%@",
+                                     kUnityAdsInitQueryParamIdentifierForVendor,
+                                     [UnityAdsDevice identifierForVendor], nil];
+		body = [queryStringWithIFV dataUsingEncoding:NSUTF8StringEncoding];
+  }
   
 	[self _queueURL:url body:body httpMethod:httpMethod retries:retryCount];
 }
@@ -136,7 +140,7 @@ static UnityAdsAnalyticsUploader *sharedUnityAdsInstanceAnalyticsUploader = nil;
 
 #pragma mark - Video analytics
 
-- (void)logVideoAnalyticsWithPosition:(VideoAnalyticsPosition)videoPosition campaignId:(NSString *)campaignId viewed:(BOOL)viewed {
+- (void)logVideoAnalyticsWithPosition:(VideoAnalyticsPosition)videoPosition campaignId:(NSString *)campaignId viewed:(BOOL)viewed cached:(BOOL)cached {
   UALOG_DEBUG(@"");
 	if (campaignId == nil) {
 		UALOG_DEBUG(@"Campaign is nil.");
@@ -180,6 +184,13 @@ static UnityAdsAnalyticsUploader *sharedUnityAdsInstanceAnalyticsUploader = nil;
       trackingQuery = [NSString stringWithFormat:@"%@&%@=%@", trackingQuery, kUnityAdsInitQueryParamSoftwareVersionKey, [UnityAdsDevice softwareVersion]];
       trackingQuery = [NSString stringWithFormat:@"%@&%@=%@", trackingQuery, kUnityAdsInitQueryParamDeviceTypeKey, [UnityAdsDevice analyticsMachineName]];
       trackingQuery = [NSString stringWithFormat:@"%@&%@=%@", trackingQuery, kUnityAdsInitQueryParamConnectionTypeKey, [UnityAdsDevice currentConnectionType]];
+      
+      id networkType = [UnityAdsDevice getNetworkType];
+      if(networkType != nil) {
+        trackingQuery = [NSString stringWithFormat:@"%@&%@=%@", trackingQuery, kUnityAdsInitQueryParamNetworkTypeKey, networkType];
+      }
+      
+      trackingQuery = [NSString stringWithFormat:@"%@&%@=%@", trackingQuery, kUnityAdsAnalyticsQueryParamCachedPlaybackKey, cached ? @"true" : @"false"];
       
       if([currentZone isIncentivized]) {
         id itemManager = [((UnityAdsIncentivizedZone *)currentZone) itemManager];

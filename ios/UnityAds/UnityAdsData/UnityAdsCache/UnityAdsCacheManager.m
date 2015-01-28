@@ -113,13 +113,12 @@ static UnityAdsCacheManager * _inst = nil;
 #pragma mark - Public
 
 - (id)init {
-	UAAssertV(![NSThread isMainThread], nil);
-	
 	if ((self = [super init])) {
     UALOG_DEBUG(@"creating downloadqueue");
     self.cacheOperationsQueue = [NSOperationQueue new];
     [self.cacheOperationsQueue setMaxConcurrentOperationCount:1];
     self.campaignsOperations = [NSMutableDictionary new];
+    self.cachingSpeed = 0;
 	}
 	
 	return self;
@@ -163,6 +162,7 @@ static UnityAdsCacheManager * _inst = nil;
       tmp.downloadURL = [self _downloadURLFor:resourceType of:campaign];
       tmp.filePath = [[self localURLFor:resourceType ofCampaign:campaign] relativePath];
       tmp.expectedFileSize = campaign.expectedTrailerSize;
+      tmp.cachingSpeed = 0;
       cacheOperation = tmp;
     }
     
@@ -251,6 +251,9 @@ static UnityAdsCacheManager * _inst = nil;
     NSDictionary * operationInfo = self.campaignsOperations[cacheOperation.operationKey];
     UnityAdsCampaign * campaign = operationInfo[kUnityAdsCacheOperationCampaignKey];
     UALOG_DEBUG(@"for campaign %@", campaign.id);
+    if(cacheOperation.cachingSpeed > 0) {
+      [self setCachingSpeed:cacheOperation.cachingSpeed];
+    }    
     if ([self.delegate respondsToSelector:@selector(finishedCaching:forCampaign:)])
       [self.delegate finishedCaching:cacheOperation.resourceType forCampaign:campaign];
     [self _removeOperation:cacheOperation];

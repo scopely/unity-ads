@@ -69,12 +69,15 @@ public class UnityAdsCacheManager implements IUnityAdsCampaignHandlerListener {
 		// Active -list contains campaigns that came with the videoPlan
 		if (activeList != null) {
 			_totalCampaigns = activeList.size();
+			boolean firstInAdPlan = true;
+
 			UnityAdsDeviceLog.debug("Updating cache: Going through active campaigns: " + _totalCampaigns);			
 			for (UnityAdsCampaign campaign : activeList) {
 				UnityAdsCampaignHandler campaignHandler = new UnityAdsCampaignHandler(campaign);
 				addToUpdatingHandlers(campaignHandler);
 				campaignHandler.setListener(this);
-				campaignHandler.initCampaign();
+				campaignHandler.initCampaign(firstInAdPlan);
+				firstInAdPlan = false;
 				
 				if (campaignHandler.hasDownloads()) {
 					addToDownloadingHandlers(campaignHandler);
@@ -110,8 +113,21 @@ public class UnityAdsCacheManager implements IUnityAdsCampaignHandlerListener {
 		}
 	}
 
-	public boolean isCampaignCached(UnityAdsCampaign campaign) {
-		return UnityAdsUtils.isFileInCache(campaign.getVideoFilename());
+	public boolean isCampaignCached(UnityAdsCampaign campaign, boolean requireCompleteVideo) {
+		if(UnityAdsUtils.isFileInCache(campaign.getVideoFilename())) {
+			if(!requireCompleteVideo) {
+				return true;
+			}
+
+			long localSize = UnityAdsUtils.getSizeForLocalFile(campaign.getVideoFilename());
+			long expectedSize = campaign.getVideoFileExpectedSize();
+
+			if(localSize > 0 && expectedSize > 0 && localSize == expectedSize) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	public void cacheNextVideo(UnityAdsCampaign campaign) {

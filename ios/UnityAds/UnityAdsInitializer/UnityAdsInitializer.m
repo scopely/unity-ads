@@ -90,7 +90,7 @@
 - (void)initCampaignManager {
 	UAAssert(![NSThread isMainThread]);
 	UALOG_DEBUG(@"");
-  [[UnityAdsCampaignManager sharedInstance] setDelegate:self];
+  [(UnityAdsCampaignManager *)[UnityAdsCampaignManager sharedInstance] setDelegate:self];
 	[self refreshCampaignManager];
 }
 
@@ -106,20 +106,15 @@
 	[[UnityAdsAnalyticsUploader sharedInstance] retryFailedUploads];
 }
 
-- (void)campaignManager:(UnityAdsCampaignManager *)campaignManager updatedWithCampaigns:(NSArray *)campaigns gamerID:(NSString *)gamerID
-{
-    
+#pragma mark - UnityAdsCampaignManagerDelegate
+
+- (void)campaignManager:(UnityAdsCampaignManager *)campaignManager updatedWithCampaigns:(NSArray *)campaigns gamerID:(NSString *)gamerID {
 }
 
-- (void)campaignManagerCampaignDataReceived
-{
-    
+- (void)campaignManagerCampaignDataReceived {
 }
 
-- (void)campaignManagerCampaignDataFailed
-{
-    
+- (void)campaignManagerCampaignDataFailed {
 }
-
 
 @end

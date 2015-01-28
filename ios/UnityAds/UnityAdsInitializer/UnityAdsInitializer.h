@@ -23,7 +23,7 @@
 - (void)initFailed;
 @end
 
-@interface UnityAdsInitializer : NSObject <UnityAdsCampaignManagerDelegate>
+@interface UnityAdsInitializer : NSObject<UnityAdsCampaignManagerDelegate>
   @property (nonatomic, weak) id<UnityAdsInitializerDelegate> delegate;
   @property (nonatomic, strong) NSThread *backgroundThread;
   @property (nonatomic, strong) dispatch_queue_t queue;
