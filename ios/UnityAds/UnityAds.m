@@ -27,6 +27,7 @@ NSString * const kUnityAdsOptionVideoUsesDeviceOrientation = @"useDeviceOrientat
 @interface UnityAds () <UnityAdsInitializerDelegate, UnityAdsMainViewControllerDelegate>
   @property (nonatomic, strong) UnityAdsInitializer *initializer;
   @property (nonatomic, assign) Boolean debug;
+  @property (nonatomic, assign) int prevCanShowLogMsg;
 @end
 
 @implementation UnityAds
@@ -70,6 +71,7 @@ static UnityAds *sharedUnityAdsInstance = nil;
 		if (sharedUnityAdsInstance == nil) {
       sharedUnityAdsInstance = [[UnityAds alloc] init];
       sharedUnityAdsInstance.debug = NO;
+      sharedUnityAdsInstance.prevCanShowLogMsg = -1;
 		}
 	}
 	
@@ -105,6 +107,15 @@ static UnityAds *sharedUnityAdsInstance = nil;
   [[UnityAdsProperties sharedInstance] enableUnityDeveloperInternalTestMode];
 }
 
+- (void)setCampaignDataURL:(NSString *)campaignDataUrl {
+  [[UnityAdsProperties sharedInstance] setCampaignDataUrl:campaignDataUrl];
+  [[UnityAdsProperties sharedInstance] setCampaignQueryString:[[UnityAdsProperties sharedInstance] createCampaignQueryString]];
+}
+
+- (void)setUnityVersion:(NSString *)unityVersion {
+  [[UnityAdsProperties sharedInstance] setUnityVersion:unityVersion];
+}
+
 - (BOOL)startWithGameId:(NSString *)gameId {
   if (![UnityAds isSupported]) return false;
   return [self startWithGameId:gameId andViewController:nil];
@@ -116,7 +127,13 @@ static UnityAds *sharedUnityAdsInstance = nil;
   if ([[UnityAdsProperties sharedInstance] adsGameId] != nil) return false;
 	if (gameId == nil || [gameId length] == 0) return false;
   if (self.initializer != nil) return false;
-  
+
+  if([[UnityAdsProperties sharedInstance] unityVersion] != nil) {
+    NSLog(@"Initializing Unity Ads version %@ (Unity %@) with gameId %@", [[UnityAdsProperties sharedInstance] adsVersion], [[UnityAdsProperties sharedInstance] unityVersion], gameId);
+  } else {
+    NSLog(@"Initializing Unity Ads version %@ with gameId %@", [[UnityAdsProperties sharedInstance] adsVersion], gameId);
+  }
+
   NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
   [notificationCenter addObserver:self selector:@selector(notificationHandler:) name:UIApplicationWillEnterForegroundNotification object:nil];
   
@@ -144,9 +161,64 @@ static UnityAds *sharedUnityAdsInstance = nil;
 
 - (BOOL)canShow {
 	UAAssertV([NSThread mainThread], NO);
-  if (![UnityAds isSupported]) return NO;
-  if ([[[UnityAdsCampaignManager sharedInstance] getViewableCampaigns] count] <= 0) return NO;
-	return [self adsCanBeShown];
+
+  if (![UnityAds isSupported]) {
+    if(self.prevCanShowLogMsg != 1) {
+      self.prevCanShowLogMsg = 1;
+      NSLog(@"Unity Ads not ready to show ads: iOS version not supported");
+    }
+    return NO;
+  }
+  
+  if ([[UnityAdsMainViewController sharedInstance] isOpen]) {
+    if(self.prevCanShowLogMsg != 2) {
+      self.prevCanShowLogMsg = 2;
+      NSLog(@"Unity Ads not ready to show ads: already showing ads");
+    }
+    return NO;
+  }
+
+  if ([[UnityAdsZoneManager sharedInstance] getCurrentZone] == nil) {
+    if(self.prevCanShowLogMsg != 3) {
+      self.prevCanShowLogMsg = 3;
+      NSLog(@"Unity Ads not ready to show ads: current zone invalid");
+    }
+    return NO;
+  }
+
+  if ([[[UnityAdsCampaignManager sharedInstance] getViewableCampaigns] count] <= 0) {
+    if(self.prevCanShowLogMsg != 4) {
+      self.prevCanShowLogMsg = 4;
+      NSLog(@"Unity Ads not ready to show ads: no ads are available");
+    }
+    return NO;
+  }
+  
+  if([self adsCanBeShown]) {
+    if(self.prevCanShowLogMsg != 0) {
+      self.prevCanShowLogMsg = 0;
+      NSLog(@"Unity Ads is ready to show ads");
+    }
+    return YES;
+  } else {
+    if(self.prevCanShowLogMsg != 5) {
+      self.prevCanShowLogMsg = 5;
+      NSLog(@"Unity Ads not ready to show ads: not initialized");
+    }
+    return NO;
+  }
+}
+
+- (BOOL)canShowZone:(NSString *)zoneId {
+  if([zoneId length] > 0) {
+    if([[UnityAdsZoneManager sharedInstance] getZone:zoneId] != nil) {
+      return [self canShow];
+    } else {
+      return NO;
+    }
+  } else {
+    return [self canShow];
+  }
 }
 
 - (BOOL)setZone:(NSString *)zoneId {
@@ -161,6 +233,10 @@ static UnityAds *sharedUnityAdsInstance = nil;
     return [self setRewardItemKey:rewardItemKey];
   }
   return FALSE;
+}
+
+- (NSString *)getZone {
+  return [[[UnityAdsZoneManager sharedInstance] getCurrentZone] getZoneId];
 }
 
 - (BOOL)show:(NSDictionary *)options {
@@ -179,6 +255,7 @@ static UnityAds *sharedUnityAdsInstance = nil;
       state = kUnityAdsViewStateTypeVideoPlayer;
     }
     
+    NSLog(@"Launching ad from %@, options: %@", [currentZone getZoneId], [currentZone getZoneOptions]);
     [[UnityAdsMainViewController sharedInstance] openAds:[currentZone openAnimated] inState:state withOptions:options];
     
     return true;
@@ -381,6 +458,7 @@ static UnityAds *sharedUnityAdsInstance = nil;
 	
   if (![[UnityAdsCampaignManager sharedInstance] selectedCampaign].viewed) {
     [[UnityAdsCampaignManager sharedInstance] selectedCampaign].viewed = YES;
+    NSLog(@"Unity Ads video completed");
     
     if (self.delegate != nil) {
       NSString *key = nil;
@@ -400,6 +478,7 @@ static UnityAds *sharedUnityAdsInstance = nil;
 	
   if (![[UnityAdsCampaignManager sharedInstance] selectedCampaign].viewed) {
     [[UnityAdsCampaignManager sharedInstance] selectedCampaign].viewed = YES;
+    NSLog(@"Unity Ads video skipped");
     
     if (self.delegate != nil) {
       NSString *key = nil;
