@@ -20,7 +20,8 @@
   return [UIApplication sharedApplication].statusBarOrientation;
 }
 
-- (NSUInteger)supportedInterfaceOrientations {
+#pragma message "TEMPORARILY CHANGING RETURN TYPE FROM NSUINTEGER to build on Xcode 7.  Next ads SDK should bring this back; DONT RELEASE WITH THIS"
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
   if ([UnityAdsDevice getIOSMajorVersion] >= 8 && [[UIDevice currentDevice] userInterfaceIdiom] != UIUserInterfaceIdiomPad)
     return UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown;
   return UIInterfaceOrientationMaskAll;

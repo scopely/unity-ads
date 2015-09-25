@@ -85,7 +85,8 @@
   return YES;
 }
 
-- (NSUInteger)supportedInterfaceOrientations {
+#pragma message "TEMPORARILY CHANGING RETURN TYPE FROM NSUINTEGER to build on Xcode 7.  Next ads SDK should bring this back; DONT RELEASE WITH THIS"
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
   return UIInterfaceOrientationMaskAll;
 }
 

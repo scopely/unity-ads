@@ -160,7 +160,8 @@
   return UIInterfaceOrientationIsLandscape(interfaceOrientation);
 }
 
-- (NSUInteger)supportedInterfaceOrientations {
+#pragma message "TEMPORARILY CHANGING RETURN TYPE FROM NSUINTEGER to build on Xcode 7.  Next ads SDK should bring this back; DONT RELEASE WITH THIS"
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
   return UIInterfaceOrientationMaskAll;
 }
 
@@ -269,8 +270,11 @@
 - (void)_createVideoPlayer {
   if (self.videoPlayer == nil) {
     UALOG_DEBUG(@"");
-    self.videoPlayer = [[UnityAdsVideoPlayer alloc] initWithPlayerItem:nil];
-    self.videoPlayer.delegate = self;
+      
+#pragma message "TEMPORARILY COMMENTING to build on Xcode 7.  Next ads SDK should bring this back; DONT RELEASE WITH THIS"
+//    self.videoPlayer = [[UnityAdsVideoPlayer alloc] initWithPlayerItem:nil];
+
+      self.videoPlayer.delegate = self;
   }
 }
 
