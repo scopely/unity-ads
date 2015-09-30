@@ -7,6 +7,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
@@ -53,7 +54,6 @@ public class UnityAdsWebData {
 	private ArrayList<UnityAdsCampaign> _campaigns = null;
 	private IUnityAdsWebDataListener _listener = null;
 	private ArrayList<UnityAdsUrlLoader> _urlLoaders = null;
-	private ArrayList<UnityAdsUrlLoader> _failedUrlLoaders = null;
 	private UnityAdsUrlLoader _currentLoader = null;
 	private Object _urlLoaderLock = null;
 	private static UnityAdsZoneManager _zoneManager = null;
@@ -157,6 +157,10 @@ public class UnityAdsWebData {
 		return viewableCampaigns;
 	}
 
+	public boolean initInProgress() {
+		return _initInProgress;
+	}
+
 	// TODO: This method always returns true regardless of success. Needs refactoring.
 	public boolean initCampaigns () {
 		if(_initInProgress) {
@@ -229,6 +233,7 @@ public class UnityAdsWebData {
 		}
 
 		String url = UnityAdsProperties.getCampaignQueryUrl();
+		UnityAdsDeviceLog.info("Requesting Unity Ads ad plan from " + url);
 		String[] parts = url.split("\\?");
 		
 		UnityAdsUrlLoaderCreator ulc = new UnityAdsUrlLoaderCreator(parts[0], parts[1], UnityAdsConstants.UNITY_ADS_REQUEST_METHOD_GET, UnityAdsRequestType.VideoPlan, 0);
@@ -243,7 +248,7 @@ public class UnityAdsWebData {
 		boolean progressSent = false;
 		if (campaign == null) return progressSent;
 
-		UnityAdsDeviceLog.debug("VP: " + position.toString() + ", " + UnityAdsProperties.UNITY_ADS_GAMER_ID);
+		UnityAdsDeviceLog.info("Unity Ads video position: " + position.toString() + ", gamer id: " + UnityAdsProperties.UNITY_ADS_GAMER_ID);
 
 		if (position != null && UnityAdsProperties.UNITY_ADS_GAMER_ID != null) {			
 			String viewUrl = String.format("%s%s", UnityAdsProperties.UNITY_ADS_BASE_URL, UnityAdsConstants.UNITY_ADS_ANALYTICS_TRACKING_PATH);
@@ -264,15 +269,9 @@ public class UnityAdsWebData {
 					queryParams = String.format("%s&%s=%s", queryParams, UnityAdsConstants.UNITY_ADS_INIT_QUERYPARAM_ADVERTISINGTRACKINGID_KEY, URLEncoder.encode(advertisingIdMd5, "UTF-8"));
 					queryParams = String.format("%s&%s=%s", queryParams, UnityAdsConstants.UNITY_ADS_INIT_QUERYPARAM_RAWADVERTISINGTRACKINGID_KEY, URLEncoder.encode(advertisingId, "UTF-8"));					
 				} else {
-					queryParams = String.format("%s&%s=%s", queryParams, UnityAdsConstants.UNITY_ADS_INIT_QUERYPARAM_DEVICEID_KEY, URLEncoder.encode(UnityAdsDevice.getAndroidId(true), "UTF-8"));
-
 					if (!UnityAdsDevice.getAndroidId(false).equals(UnityAdsConstants.UNITY_ADS_DEVICEID_UNKNOWN)) {
 						queryParams = String.format("%s&%s=%s", queryParams, UnityAdsConstants.UNITY_ADS_INIT_QUERYPARAM_ANDROIDID_KEY, URLEncoder.encode(UnityAdsDevice.getAndroidId(true), "UTF-8"));
 						queryParams = String.format("%s&%s=%s", queryParams, UnityAdsConstants.UNITY_ADS_INIT_QUERYPARAM_RAWANDROIDID_KEY, URLEncoder.encode(UnityAdsDevice.getAndroidId(false), "UTF-8"));
-					}
-
-					if (!UnityAdsDevice.getMacAddress().equals(UnityAdsConstants.UNITY_ADS_DEVICEID_UNKNOWN)) {
-						queryParams = String.format("%s&%s=%s", queryParams, UnityAdsConstants.UNITY_ADS_INIT_QUERYPARAM_MACADDRESS_KEY, URLEncoder.encode(UnityAdsDevice.getMacAddress(), "UTF-8"));
 					}
 				}
 
@@ -362,12 +361,7 @@ public class UnityAdsWebData {
 				_urlLoaders.clear();
 				_urlLoaders = null;
 			}
-		
-			if (_failedUrlLoaders != null) {
-				_failedUrlLoaders.clear();
-				_failedUrlLoaders = null;
-			}
-		
+
 			if (_currentLoader != null) {
 				_currentLoader.cancel(true);
 				_currentLoader = null;
@@ -473,13 +467,19 @@ public class UnityAdsWebData {
 
 	private void checkFailedUrls () {
 		File pendingRequestFile = new File(UnityAdsUtils.getCacheDirectory() + "/" + UnityAdsConstants.PENDING_REQUESTS_FILENAME);
-		
+
 		if (pendingRequestFile.exists()) {
-			String contents = UnityAdsUtils.readFile(pendingRequestFile, true);
+			String contents;
+
+			synchronized(_urlLoaderLock) {
+				contents = UnityAdsUtils.readFile(pendingRequestFile, true);
+				UnityAdsUtils.removeFile(pendingRequestFile.toString());
+			}
+
 			JSONObject pendingRequestsJson = null;
 			JSONArray pendingRequestsArray = null;
 			//UnityAdsUrlLoader loader = null;
-			
+
 			try {
 				pendingRequestsJson = new JSONObject(contents);
 				pendingRequestsArray = pendingRequestsJson.getJSONArray("data");
@@ -502,48 +502,58 @@ public class UnityAdsWebData {
 			catch (Exception e) {
 				UnityAdsDeviceLog.error("Problems while sending some of the failed urls.");
 			}
-
-			UnityAdsUtils.removeFile(pendingRequestFile.toString());
 		}
 		
 		startNextLoader();
 	}
 	
 	private void writeFailedUrl (UnityAdsUrlLoader loader) {
+		if(loader == null) return;
+
 		synchronized(_urlLoaderLock) {
-			if (loader == null) return;
-			if (_failedUrlLoaders == null)
-				_failedUrlLoaders = new ArrayList<UnityAdsWebData.UnityAdsUrlLoader>();
-			
-			if (!_failedUrlLoaders.contains(loader)) {
-				_failedUrlLoaders.add(loader);
-			}
-			
-			JSONObject failedUrlsJson = new JSONObject();
-			JSONArray failedUrlsArray = new JSONArray();
-			
 			try {
-				JSONObject failedUrl = null;
-				for (UnityAdsUrlLoader failedLoader : _failedUrlLoaders) {
-					failedUrl = new JSONObject();
-					failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_URL_KEY, failedLoader.getBaseUrl());
-					failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_REQUESTTYPE_KEY, failedLoader.getRequestType());
-					failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_METHODTYPE_KEY, failedLoader.getHTTPMethod());
-					failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_BODY_KEY, failedLoader.getQueryParams());				
-					failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_RETRIES_KEY, failedLoader.getRetries());
-					
-					failedUrlsArray.put(failedUrl);
-				}
-				
-				failedUrlsJson.put("data", failedUrlsArray);
-			}
-			catch (Exception e) {
-				UnityAdsDeviceLog.error("Error collecting failed urls");
-			}
-			
-			if (_failedUrlLoaders != null && _failedUrlLoaders.size() > 0 && UnityAdsUtils.canUseExternalStorage()) {
 				File pendingRequestFile = new File(UnityAdsUtils.getCacheDirectory() + "/" + UnityAdsConstants.PENDING_REQUESTS_FILENAME);
-				UnityAdsUtils.writeFile(pendingRequestFile, failedUrlsJson.toString());
+				
+				JSONObject pendingRequestsJson = null;
+				JSONArray pendingRequestsArray = null;
+				
+				if(pendingRequestFile.exists()) {
+					String contents = UnityAdsUtils.readFile(pendingRequestFile, true);
+
+					try {
+						pendingRequestsJson = new JSONObject(contents);
+						UnityAdsDeviceLog.debug("JNIDEBUG read json: " + pendingRequestsJson.toString());
+						pendingRequestsArray = pendingRequestsJson.getJSONArray("data");
+						UnityAdsDeviceLog.debug("JNIDEBUG read array: " + pendingRequestsArray.toString());
+					} catch(JSONException e) {
+						pendingRequestsJson = null;
+						pendingRequestsArray = null;
+					}
+				}
+
+				if(pendingRequestsArray == null) {
+					pendingRequestsArray = new JSONArray();
+				}
+
+				if(pendingRequestsJson == null) {
+					pendingRequestsJson = new JSONObject();
+				}
+
+				JSONObject failedUrl = new JSONObject();
+				failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_URL_KEY, loader.getBaseUrl());
+				failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_REQUESTTYPE_KEY, loader.getRequestType());
+				failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_METHODTYPE_KEY, loader.getHTTPMethod());
+				failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_BODY_KEY, loader.getQueryParams());				
+				failedUrl.put(UnityAdsConstants.UNITY_ADS_FAILED_URL_RETRIES_KEY, loader.getRetries());
+
+				pendingRequestsArray.put(failedUrl);
+				pendingRequestsJson.put("data", pendingRequestsArray);
+
+				if(UnityAdsUtils.canUseExternalStorage()) {
+					UnityAdsUtils.writeFile(pendingRequestFile, pendingRequestsJson.toString());
+				}
+			} catch(Exception e) {
+				UnityAdsDeviceLog.debug("Exception when writing failed url: " + e.getMessage());
 			}
 		}
 	}
@@ -554,6 +564,8 @@ public class UnityAdsWebData {
 		_initInProgress = false;
 
 		try {
+			UnityAdsDeviceLog.debug("Ad plan: " + json);
+
 			_campaignJson = new JSONObject(json);
 			JSONObject data = null;
 
@@ -661,7 +673,7 @@ public class UnityAdsWebData {
 		}
 
 		if(_listener != null && validData && _campaigns != null && _campaigns.size() > 0) {
-			UnityAdsDeviceLog.debug("WebDataCompleted: " + json);
+			UnityAdsDeviceLog.info("Unity Ads initialized with " + _campaigns.size() + " campaigns and " + (_zoneManager != null ? _zoneManager.zoneCount() : 0) + " zones");
 			_listener.onWebDataCompleted();
 			return;
 		}
@@ -703,49 +715,75 @@ public class UnityAdsWebData {
 	}
 
 	private ArrayList<UnityAdsCampaign> filterCampaigns(ArrayList<UnityAdsCampaign> campaigns) {
-		if(campaigns != null && campaigns.size() > 0) {
-			Activity activity = UnityAdsProperties.getCurrentActivity();
+		if(campaigns == null || campaigns.size() == 0) return null;
 
-			if(activity == null) return campaigns;
+		Activity activity = UnityAdsProperties.getCurrentActivity();
 
-			PackageManager pm = activity.getPackageManager();
+		if(activity == null) return campaigns;
 
-			ArrayList<UnityAdsCampaign> newCampaigns = new ArrayList<UnityAdsCampaign>();
-			ArrayList<String> oldCampaigns = null;
+		PackageManager pm = activity.getPackageManager();
 
-			for(UnityAdsCampaign campaign : campaigns) {
-				String packageName = campaign.getStoreId();
+		ArrayList<UnityAdsCampaign> newCampaigns = new ArrayList<UnityAdsCampaign>();
+		ArrayList<String> installedCampaigns = null;
 
-				if(packageName != null) {
-					try {
-						PackageInfo pkgInfo = pm.getPackageInfo(packageName, 0);
+		for(UnityAdsCampaign campaign : campaigns) {
+			String packageName = campaign.getStoreId();
 
-						if(pkgInfo != null && pkgInfo.packageName == packageName) {
-							if(oldCampaigns == null) {
-								oldCampaigns = new ArrayList<String>();
-							}
+			// Sometimes getStoreId returns stuff like com.company.game&hl=en so strip ampersand(0x26) and everything after that
+			if(packageName.indexOf(0x26) != -1) {
+				packageName = packageName.substring(0, packageName.indexOf(0x26));
+			}
 
-							oldCampaigns.add(campaign.getGameId());
-							UnityAdsDeviceLog.debug("Filtered game id " + campaign.getGameId() + " from ad plan");
-						} else {
-							newCampaigns.add(campaign);
-						}
-					} catch (NameNotFoundException e) {
+			if(packageName != null) {
+				boolean installed = false;
+
+				// Check if packageName is installed
+				try {
+					PackageInfo pkgInfo = pm.getPackageInfo(packageName, 0);
+					if(pkgInfo != null && packageName.equals(pkgInfo.packageName)) {
+						installed = true;
+					}
+				} catch(NameNotFoundException e) {
+					installed = false;
+				}
+
+				// Add all installed games to list for next ad request
+				if(installed) {
+					if(installedCampaigns == null) {
+						installedCampaigns = new ArrayList<String>();
+					}
+
+					installedCampaigns.add(campaign.getGameId());
+				}
+
+				String filterMode = campaign.getFilterMode();
+
+				if(filterMode != null && filterMode.equals("whitelist")) {
+					// In whitelist mode, show ads for game only when the game is already installed
+					if(installed) {
 						newCampaigns.add(campaign);
+					} else {
+						UnityAdsDeviceLog.debug("Filtered game id " + campaign.getGameId() + " from ad plan (not installed)");
 					}
 				} else {
-					newCampaigns.add(campaign);
+					// In blacklist mode (default), show ads for game only when the game is not already installed
+					if(installed) {
+						UnityAdsDeviceLog.debug("Filtered game id " + campaign.getGameId() + " from ad plan (already installed)");
+					} else {
+						newCampaigns.add(campaign);
+					}
 				}
+			} else {
+				// If package name is not available for any reason, do no filtering
+				newCampaigns.add(campaign);
 			}
-
-			if(oldCampaigns != null) {
-				UnityAdsProperties.APPFILTER_LIST = TextUtils.join(",", oldCampaigns);
-			}
-
-			return newCampaigns;
 		}
 
-		return null;
+		if(installedCampaigns != null) {
+			UnityAdsProperties.APPFILTER_LIST = TextUtils.join(",", installedCampaigns);
+		}
+
+		return newCampaigns;
 	}
 
 	private void requestAppWhitelist(String url) {
@@ -924,6 +962,11 @@ public class UnityAdsWebData {
 		public void setPostBody(String body) {
 			if(_queryParams != null && _queryParams.length() > 2) {
 				_finalUrl = _baseUrl + "?" + _queryParams;
+				try {
+					_url = new URL(_finalUrl);
+				} catch(MalformedURLException e) {
+					UnityAdsDeviceLog.error("Error when creating adding query parameters to URL " + e);
+				}
 			}
 
 			_postBody = body;

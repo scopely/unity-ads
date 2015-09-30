@@ -160,7 +160,7 @@
   return UIInterfaceOrientationIsLandscape(interfaceOrientation);
 }
 
-- (NSUInteger)supportedInterfaceOrientations {
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
   return UIInterfaceOrientationMaskAll;
 }
 
@@ -269,7 +269,12 @@
 - (void)_createVideoPlayer {
   if (self.videoPlayer == nil) {
     UALOG_DEBUG(@"");
+      
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
     self.videoPlayer = [[UnityAdsVideoPlayer alloc] initWithPlayerItem:nil];
+#pragma clang diagnostic pop
+      
     self.videoPlayer.delegate = self;
   }
 }
@@ -448,7 +453,6 @@
 - (void)skipButtonPressed {
   UALOG_DEBUG(@"");
   [self videoPlaybackEnded:TRUE];
-  [[UnityAdsMainViewController sharedInstance] applyOptionsToCurrentState:@{@"sendAbortInstrumentation":@true, @"type":kUnityAdsGoogleAnalyticsEventVideoAbortSkip}];
 }
 
 #pragma mark - Video Buffering Label

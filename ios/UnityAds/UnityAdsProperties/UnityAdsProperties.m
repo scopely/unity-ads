@@ -12,7 +12,7 @@
 #import "../UnityAdsDevice/UnityAdsDevice.h"
 #import "UnityAdsCacheManager.h"
 
-NSString * const kUnityAdsVersion = @"1310";
+NSString * const kUnityAdsVersion = @"1405";
 
 @implementation UnityAdsProperties
 
@@ -34,8 +34,7 @@ static UnityAdsProperties *sharedProperties = nil;
     [self setCampaignQueryString:[self createCampaignQueryString]];
     [self setSdkIsCurrent:true];
     [self setExpectedSdkVersion:@"0"];
-    [self setAppFiltering:@"off"];
-    [self setInstalledApps:[[NSMutableSet alloc] init]];
+    [self setUnityVersion:nil];
   }
   
   return self;
@@ -46,10 +45,6 @@ static UnityAdsProperties *sharedProperties = nil;
 }
 
 - (NSString *)createCampaignQueryString {
-  return [self createCampaignQueryString:YES];
-}
-
-- (NSString *)createCampaignQueryString:(BOOL)withInstalledApps {
   NSString *queryParams = @"?";
   
   // Mandatory params
@@ -74,7 +69,10 @@ static UnityAdsProperties *sharedProperties = nil;
   queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamSoftwareVersionKey, [UnityAdsDevice softwareVersion]];
   queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamDeviceTypeKey, [UnityAdsDevice analyticsMachineName]];
   queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamConnectionTypeKey, [UnityAdsDevice currentConnectionType]];
-  queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamIdentifierForVendor, [UnityAdsDevice identifierForVendor]];
+  
+  if(self.unityVersion != nil && self.unityVersion.length > 0) {
+    queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamUnityVersionKey, self.unityVersion];
+  }
   
   id networkType = [UnityAdsDevice getNetworkType];
   if(networkType != nil) {
@@ -98,10 +96,6 @@ static UnityAdsProperties *sharedProperties = nil;
   }
   else {
     queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamEncryptionKey, [UnityAdsDevice isEncrypted] ? @"true" : @"false"];
-  }
-  
-  if(withInstalledApps && [[self installedApps] count] > 0) {
-    queryParams = [NSString stringWithFormat:@"%@&%@=%@", queryParams, kUnityAdsInitQueryParamAppFilterListKey, [[self installedApps].allObjects componentsJoinedByString:@","]];
   }
   
   if (self.sendInternalDetails) {
