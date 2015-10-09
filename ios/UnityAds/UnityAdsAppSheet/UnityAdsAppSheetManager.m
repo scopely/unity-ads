@@ -18,8 +18,13 @@
   return [UIApplication sharedApplication].statusBarOrientation;
 }
 
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90000
 - (NSUInteger)supportedInterfaceOrientations {
-  return UIInterfaceOrientationMaskAll;
+#else
+    - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+#endif
+  if ([UnityAdsDevice getIOSMajorVersion] >= 8 && [[UIDevice currentDevice] userInterfaceIdiom] != UIUserInterfaceIdiomPad)
+    return UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown;
 }
 
 - (BOOL)shouldAutorotate {

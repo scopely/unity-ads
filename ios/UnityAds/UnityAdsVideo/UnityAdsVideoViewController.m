@@ -160,7 +160,11 @@
   return UIInterfaceOrientationIsLandscape(interfaceOrientation);
 }
 
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90000
 - (NSUInteger)supportedInterfaceOrientations {
+#else
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+#endif
   return UIInterfaceOrientationMaskAll;
 }
 
@@ -269,7 +273,7 @@
 - (void)_createVideoPlayer {
   if (self.videoPlayer == nil) {
     UALOG_DEBUG(@"");
-    self.videoPlayer = [[UnityAdsVideoPlayer alloc] initWithPlayerItem:nil];
+//    self.videoPlayer = [[UnityAdsVideoPlayer alloc] initWithPlayerItem:];
     self.videoPlayer.delegate = self;
   }
 }
