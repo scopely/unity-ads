@@ -273,7 +273,7 @@
 - (void)_createVideoPlayer {
   if (self.videoPlayer == nil) {
     UALOG_DEBUG(@"");
-//    self.videoPlayer = [[UnityAdsVideoPlayer alloc] initWithPlayerItem:];
+    self.videoPlayer = [[UnityAdsVideoPlayer alloc] init];
     self.videoPlayer.delegate = self;
   }
 }
