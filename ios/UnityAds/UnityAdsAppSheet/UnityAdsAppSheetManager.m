@@ -23,7 +23,7 @@
 #else
     - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
 #endif
-  if ([UnityAdsDevice getIOSMajorVersion] >= 8 && [[UIDevice currentDevice] userInterfaceIdiom] != UIUserInterfaceIdiomPad)
+//  if ([UnityAdsDevice getIOSMajorVersion] >= 8 && [[UIDevice currentDevice] userInterfaceIdiom] != UIUserInterfaceIdiomPad)
     return UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown;
 }
 
